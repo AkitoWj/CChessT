@@ -66,9 +66,15 @@
                     🦉
                 </div>
                 
-                <h2 id="dialog-title" class="text-xl md:text-2xl font-black text-emerald-600 mb-2 ml-12 md:ml-16">
-                    載入中...
-                </h2>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2 ml-12 md:ml-16">
+                    <h2 id="dialog-title" class="text-xl md:text-2xl font-black text-emerald-600">
+                        載入中...
+                    </h2>
+                    <!-- 課程選單 -->
+                    <select id="tutorial-selector" class="bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-1.5 font-bold shadow-sm cursor-pointer outline-none">
+                    </select>
+                </div>
+
                 <p id="dialog-text" class="text-gray-700 font-bold text-base md:text-xl leading-relaxed ml-12 md:ml-16 min-h-[4rem]">
                     請稍候，準備為您佈置棋盤...
                 </p>
@@ -141,12 +147,13 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color('#87CEEB'); // Sky blue
         
-        // Add some clouds (simple spheres)
+        // 加入雲朵 (修改為往遠方、下方退，避免擋住視線)
         for(let i=0; i<10; i++) {
-            const cloudGeo = new THREE.SphereGeometry(Math.random()*5+3, 16, 16);
+            const cloudGeo = new THREE.SphereGeometry(Math.random()*15+5, 16, 16);
             const cloudMat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
             const cloud = new THREE.Mesh(cloudGeo, cloudMat);
-            cloud.position.set((Math.random()-0.5)*200, 30 + Math.random()*20, (Math.random()-0.5)*200 - 50);
+            // Z軸設定在 -150 到 -250 之間，確保在棋盤後方很遠的地方
+            cloud.position.set((Math.random()-0.5)*400, -20 + Math.random()*60, -150 - Math.random()*100);
             scene.add(cloud);
         }
 
@@ -161,10 +168,10 @@
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.1; // 防止視角進入地下
+        controls.maxPolarAngle = Math.PI / 2 - 0.1; 
         controls.minDistance = 30;
         controls.maxDistance = 150;
-        controls.target.set(0, 0, -10); // 預設將中心點往上移，避免下方棋子被介面擋住
+        controls.target.set(0, 0, -10); 
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -178,14 +185,14 @@
 
         // --- 棋盤設定 ---
         const gridSize = 10;
-        const boardWidth = 8 * gridSize; // 9 intersections (0-8)
-        const boardHeight = 9 * gridSize; // 10 intersections (0-9)
+        const boardWidth = 8 * gridSize;
+        const boardHeight = 9 * gridSize;
         const pieceRadius = 4;
         const pieceHeight = 2.5;
 
         // Board Mesh
         const boardGeo = new THREE.BoxGeometry(boardWidth + 12, 4, boardHeight + 12);
-        const boardMat = new THREE.MeshLambertMaterial({ color: '#f5d398' }); // Wood color
+        const boardMat = new THREE.MeshLambertMaterial({ color: '#f5d398' }); 
         const boardMesh = new THREE.Mesh(boardGeo, boardMat);
         boardMesh.position.y = -2;
         boardMesh.receiveShadow = true;
@@ -212,20 +219,18 @@
 
         // Vertical lines
         for (let x = 0; x <= 8; x++) {
-            // Lower half
             const points1 = [];
             points1.push(gridToWorld(x, 0));
             points1.push(gridToWorld(x, 4));
             scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1), lineMat));
             
-            // Upper half
             const points2 = [];
             points2.push(gridToWorld(x, 5));
             points2.push(gridToWorld(x, 9));
             scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2), lineMat));
         }
 
-        // River edges (connecting vertical 0 and 8 across the river)
+        // River edges
         const riverEdge1 = [gridToWorld(0, 4), gridToWorld(0, 5)];
         scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(riverEdge1), lineMat));
         const riverEdge2 = [gridToWorld(8, 4), gridToWorld(8, 5)];
@@ -240,7 +245,7 @@
         ];
         palaces.forEach(p => scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), lineMat)));
 
-        // River Text (Texture mapping onto a plane)
+        // River Text
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 128;
         const ctx = canvas.getContext('2d');
@@ -284,20 +289,14 @@
 
         function createPieceMesh(type, isRed, gridX, gridY) {
             const char = isRed ? PIECE_DEF[type].red : PIECE_DEF[type].black;
-            
             const group = new THREE.Group();
             
-            // Base cylinder
             const geo = new THREE.CylinderGeometry(pieceRadius, pieceRadius, pieceHeight, 32);
-            const mat = new THREE.MeshLambertMaterial({ 
-                color: '#ffedd5', // Wooden color
-            });
+            const mat = new THREE.MeshLambertMaterial({ color: '#ffedd5' });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+            mesh.castShadow = true; mesh.receiveShadow = true;
             group.add(mesh);
 
-            // Inner carved ring
             const ringGeo = new THREE.RingGeometry(pieceRadius - 1.2, pieceRadius - 0.8, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: isRed ? '#dc2626' : '#1f2937' });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -305,7 +304,6 @@
             ring.position.y = pieceHeight / 2 + 0.01;
             group.add(ring);
 
-            // Text texture
             const tCanvas = document.createElement('canvas');
             tCanvas.width = 128; tCanvas.height = 128;
             const tCtx = tCanvas.getContext('2d');
@@ -320,12 +318,9 @@
             const textMesh = new THREE.Mesh(tGeo, tMat);
             textMesh.rotation.x = -Math.PI / 2;
             textMesh.position.y = pieceHeight / 2 + 0.02;
-            
-            // 讓黑棋文字轉180度朝向紅方（玩家）
             if (!isRed) textMesh.rotation.z = Math.PI;
             
             group.add(textMesh);
-
             const pos = gridToWorld(gridX, gridY);
             group.position.set(pos.x, pieceHeight/2, pos.z);
             
@@ -360,10 +355,8 @@
             const absDy = Math.abs(dy);
             const target = boardState[endY][endX];
 
-            // 不能吃自己的棋子
             if (target && target.isRed === piece.isRed) return { valid: false, msg: "不能吃自己的棋子喔！" };
 
-            // 判斷是否過河
             const isCrossRiver = piece.isRed ? (endY > 4) : (endY < 5);
 
             switch(piece.type) {
@@ -382,23 +375,22 @@
                 case 'elephant':
                     if (absDx !== 2 || absDy !== 2) return { valid: false, msg: "相/象要走『田』字（斜走兩格）喔！" };
                     if (isCrossRiver) return { valid: false, msg: "相/象太胖了，不能過河！" };
-                    // 塞象眼檢查
                     const eyeX = piece.gridX + dx/2;
                     const eyeY = piece.gridY + dy/2;
-                    if (boardState[eyeY][eyeX] !== null) return { valid: false, msg: "哎呀！田字中間有棋子擋住（塞象眼），飛不過去！", blockX: eyeX, blockY: eyeY };
+                    // 新增傳回 destX 與 destY 以便畫出黑色禁走區
+                    if (boardState[eyeY][eyeX] !== null) return { valid: false, msg: "哎呀！田字中間有棋子擋住（塞象眼），飛不過去！", blockX: eyeX, blockY: eyeY, destX: endX, destY: endY };
                     return { valid: true };
                 case 'horse':
                     if (!((absDx === 1 && absDy === 2) || (absDx === 2 && absDy === 1))) {
                         return { valid: false, msg: "馬要走『日』字型喔！" };
                     }
-                    // 拐馬腳檢查
                     const blockX = absDx === 2 ? piece.gridX + dx/2 : piece.gridX;
                     const blockY = absDy === 2 ? piece.gridY + dy/2 : piece.gridY;
-                    if (boardState[blockY][blockX] !== null) return { valid: false, msg: "馬腳被擋住了（拐馬腳），跳不過去！", blockX: blockX, blockY: blockY };
+                    // 新增傳回 destX 與 destY 以便畫出黑色禁走區
+                    if (boardState[blockY][blockX] !== null) return { valid: false, msg: "馬腳被擋住了（拐馬腳），跳不過去！", blockX: blockX, blockY: blockY, destX: endX, destY: endY };
                     return { valid: true };
                 case 'chariot':
                     if (absDx !== 0 && absDy !== 0) return { valid: false, msg: "車只能直直走或橫橫走喔！" };
-                    // 檢查中間有沒有擋路的
                     let countC = 0;
                     if (absDx !== 0) {
                         let min = Math.min(piece.gridX, endX);
@@ -430,23 +422,20 @@
                     }
                     return { valid: true };
                 case 'pawn':
+                    // 修正：兵/卒無論如何，每次移動的總格數(X變化量 + Y變化量)一定只能是 1
+                    if (absDx + absDy !== 1) {
+                        return { valid: false, msg: "兵/卒一次只能走一格喔！" };
+                    }
+                    
                     if (piece.isRed) {
                         if (dy < 0) return { valid: false, msg: "兵不能後退喔！" };
-                        if (!isCrossRiver) {
-                            if (dy !== 1 || dx !== 0) return { valid: false, msg: "兵過河前，只能直直往前走一格！" };
-                        } else {
-                            if (dy === 1 && dx !== 0) return { valid: false, msg: "兵一次只能走一格！" };
-                            if (dy === 0 && absDx !== 1) return { valid: false, msg: "兵一次只能走一格！" };
-                            if (absDx > 0 && absDy > 0) return { valid: false, msg: "兵不能斜著走喔！" };
+                        if (!isCrossRiver && dx !== 0) {
+                            return { valid: false, msg: "兵過河前，只能直直往前走一格！" };
                         }
                     } else {
                         if (dy > 0) return { valid: false, msg: "卒不能後退喔！" };
-                        if (!isCrossRiver) {
-                            if (dy !== -1 || dx !== 0) return { valid: false, msg: "卒過河前，只能直直往前走一格！" };
-                        } else {
-                            if (dy === -1 && dx !== 0) return { valid: false, msg: "卒一次只能走一格！" };
-                            if (dy === 0 && absDx !== 1) return { valid: false, msg: "卒一次只能走一格！" };
-                            if (absDx > 0 && absDy > 0) return { valid: false, msg: "卒不能斜著走喔！" };
+                        if (!isCrossRiver && dx !== 0) {
+                            return { valid: false, msg: "卒過河前，只能直直往前走一格！" };
                         }
                     }
                     return { valid: true };
@@ -456,7 +445,6 @@
 
         function showIndicators(piece) {
             clearIndicators();
-            // Highlight selected piece
             const pos = gridToWorld(piece.gridX, piece.gridY);
             const selGeo = new THREE.RingGeometry(pieceRadius + 0.5, pieceRadius + 1.5, 32);
             const selMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
@@ -465,12 +453,10 @@
             selMesh.position.set(pos.x, 0.2, pos.z);
             indicatorsGroup.add(selMesh);
 
-            const generatedBlocks = new Set(); // 記錄已產生的 X 標記
+            const generatedBlocks = new Set(); 
 
-            // Find all valid moves
             for (let y = 0; y < 10; y++) {
                 for (let x = 0; x < 9; x++) {
-                    // Tutorial restrictions
                     if (isTutorialMode) {
                         const step = tutorialSteps[currentTutorialStep];
                         if (step.allowedPiece && piece.type !== step.allowedPiece) continue;
@@ -482,7 +468,7 @@
                         const iGeo = new THREE.BoxGeometry(4, 0.5, 4);
                         const targetPiece = boardState[y][x];
                         const iMat = new THREE.MeshBasicMaterial({ 
-                            color: targetPiece ? 0xef4444 : 0x4ade80, // Red for capture, Green for move
+                            color: targetPiece ? 0xef4444 : 0x4ade80, 
                             transparent: true, opacity: 0.7 
                         });
                         const iMesh = new THREE.Mesh(iGeo, iMat);
@@ -490,7 +476,6 @@
                         iMesh.userData = { isIndicator: true, gridX: x, gridY: y };
                         indicatorsGroup.add(iMesh);
 
-                        // 增強吃子標示：在目標棋子上空加一個紅色鎖定環
                         if (targetPiece) {
                             const ringGeo = new THREE.RingGeometry(pieceRadius - 0.5, pieceRadius + 0.5, 32);
                             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
@@ -500,7 +485,7 @@
                             indicatorsGroup.add(targetRing);
                         }
                     } else if (rule.blockX !== undefined && rule.blockY !== undefined) {
-                        // 顯示被擋住的紅色 X
+                        // 1. 顯示被擋住的紅色 X
                         const blockKey = `${rule.blockX},${rule.blockY}`;
                         if (!generatedBlocks.has(blockKey)) {
                             generatedBlocks.add(blockKey);
@@ -517,6 +502,20 @@
                             xGroup.add(m2);
                             xGroup.position.set(bPos.x, pieceHeight + 1.5, bPos.z);
                             indicatorsGroup.add(xGroup);
+                        }
+
+                        // 2. 顯示無法到達的目的地的黑色半透明方塊
+                        const destKey = `dest_${rule.destX},${rule.destY}`;
+                        if (rule.destX !== undefined && rule.destY !== undefined && !generatedBlocks.has(destKey)) {
+                            generatedBlocks.add(destKey);
+                            const dPos = gridToWorld(rule.destX, rule.destY);
+                            
+                            const dGeo = new THREE.BoxGeometry(4, 0.6, 4); 
+                            const dMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 });
+                            const dMesh = new THREE.Mesh(dGeo, dMat);
+                            // 稍微提高避免Z-fighting重疊
+                            dMesh.position.set(dPos.x, 0.35, dPos.z);
+                            indicatorsGroup.add(dMesh);
                         }
                     }
                 }
@@ -537,7 +536,6 @@
             const endPos = gridToWorld(endX, endY);
             endPos.y = pieceHeight/2; 
             
-            // 更新狀態
             boardState[piece.gridY][piece.gridX] = null;
             piece.gridX = endX;
             piece.gridY = endY;
@@ -559,7 +557,6 @@
                         piecesGroup.remove(target.mesh);
                         playSound('capture');
                         
-                        // 檢查是否吃掉雙方的老大 (帥或將)
                         if (target.type === 'king') {
                             isGameOver = true;
                             playSound('success');
@@ -574,10 +571,9 @@
                                 dialogText.innerHTML = "太棒了！你吃掉了電腦的「將」，你贏得這場比賽了！🎉";
                             }
                             
-                            isPlayWithAI = false; // 關閉 AI
-                            currentTurn = 'none'; // 鎖定棋盤，不讓玩家繼續下
+                            isPlayWithAI = false; 
+                            currentTurn = 'none'; 
                             
-                            // 顯示重新開始按鈕
                             const btnNext = document.getElementById('btn-next');
                             btnNext.innerHTML = "重新開始對局 🔄";
                             btnNext.disabled = false;
@@ -587,13 +583,10 @@
                         playSound('move');
                     }
                     
-                    // 如果遊戲已經結束，就不執行換人與AI思考
                     if (isGameOver) return;
                     
-                    // 換人
                     currentTurn = currentTurn === 'red' ? 'black' : 'red';
                     
-                    // 檢查後續進度 (教學 或 電腦AI)
                     if (isTutorialMode) {
                         checkTutorialProgress(piece, target);
                     } else if (isPlayWithAI) {
@@ -674,20 +667,19 @@
 
             raycaster.setFromCamera(mouse, camera);
 
-            // 1. Check indicators (Movement)
             if (selectedPiece) {
                 const iIntersects = raycaster.intersectObjects(indicatorsGroup.children);
                 if (iIntersects.length > 0) {
                     const indicator = iIntersects[0].object;
-                    executeMove(selectedPiece, indicator.userData.gridX, indicator.userData.gridY);
-                    return;
+                    if(indicator.userData.isIndicator) {
+                        executeMove(selectedPiece, indicator.userData.gridX, indicator.userData.gridY);
+                        return;
+                    }
                 }
             }
 
-            // 2. Check piece selection
             const intersects = raycaster.intersectObjects(piecesGroup.children, true);
             if (intersects.length > 0) {
-                // Find root piece group
                 let object = intersects[0].object;
                 while (object.parent && object.parent !== piecesGroup) {
                     object = object.parent;
@@ -719,13 +711,10 @@
                     playSound('move');
                 }
             } else {
-                // Clicked empty space
                 if (selectedPiece) {
-                    // Try to move to empty grid logic
                     const bIntersects = raycaster.intersectObject(boardMesh);
                     if (bIntersects.length > 0) {
                         const point = bIntersects[0].point;
-                        // Grid snap
                         const gridX = Math.round((point.x + boardWidth/2) / gridSize);
                         const gridY = Math.round((point.z + boardHeight/2) / gridSize);
                         
@@ -748,6 +737,7 @@
         const btnNext = document.getElementById('btn-next');
         const btnPrev = document.getElementById('btn-prev');
         const btnSandbox = document.getElementById('btn-sandbox');
+        const tutorialSelector = document.getElementById('tutorial-selector');
 
         const tutorialSteps = [
             {
@@ -813,17 +803,37 @@
             }
         ];
 
+        // 初始化課程下拉選單
+        tutorialSteps.forEach((step, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.text = step.title;
+            tutorialSelector.appendChild(option);
+        });
+
+        // 監聽下拉選單變化
+        tutorialSelector.addEventListener('change', (e) => {
+            isPlayWithAI = false; 
+            loadTutorialStep(parseInt(e.target.value));
+        });
+
         function loadTutorialStep(index) {
             if (index < 0 || index >= tutorialSteps.length) return;
+            
+            isTutorialMode = true;
+            isPlayWithAI = false;
             currentTutorialStep = index;
             const step = tutorialSteps[index];
             
+            // 更新 UI 標題與選單狀態
             dialogTitle.innerHTML = step.title;
+            tutorialSelector.value = index;
+            tutorialSelector.classList.remove('hidden');
+            
             dialogText.innerHTML = step.text;
             
             step.setup();
             
-            // Buttons logic
             btnPrev.classList.toggle('hidden', index === 0);
             
             if (index === tutorialSteps.length - 1) {
@@ -855,10 +865,8 @@
         btnNext.addEventListener('click', () => {
             btnNext.classList.remove('glow-btn');
             if (isPlayWithAI) {
-                // 如果是對戰模式下的重啟按鈕
                 setupSandbox();
             } else {
-                // 如果是教學模式
                 loadTutorialStep(currentTutorialStep + 1);
             }
         });
@@ -872,17 +880,20 @@
             isTutorialMode = false;
             isPlayWithAI = true;
             currentTurn = 'red';
+            
             dialogTitle.innerHTML = "⚔️ 與電腦對戰";
+            tutorialSelector.classList.add('hidden'); // 對戰模式隱藏選單
+            
             dialogText.innerHTML = "準備好了嗎？你是紅方先走。<br>點擊棋子，再點擊綠色方塊移動。";
             btnNext.innerHTML = "重新開始對局 🔄";
             btnNext.disabled = false;
             btnNext.classList.remove('hidden');
             btnSandbox.classList.remove('glow-btn');
+            btnPrev.classList.add('hidden');
             
             camera.position.set(0, 75, 80);
             controls.target.set(0,0,-10);
 
-            // Standard Setup
             const setupData = [
                 // Red
                 ['chariot',true,0,0], ['horse',true,1,0], ['elephant',true,2,0], ['advisor',true,3,0], ['king',true,4,0], ['advisor',true,5,0], ['elephant',true,6,0], ['horse',true,7,0], ['chariot',true,8,0],
@@ -904,9 +915,8 @@
         function animateLoop() {
             requestAnimationFrame(animateLoop);
             
-            if (typeof controls !== 'undefined') controls.update(); // 更新視角控制器
+            if (typeof controls !== 'undefined') controls.update(); 
 
-            // Handle animations (Piece movement)
             const time = performance.now();
             for (let i = animations.length - 1; i >= 0; i--) {
                 const anim = animations[i];
@@ -917,10 +927,8 @@
                     if (anim.onComplete) anim.onComplete();
                     animations.splice(i, 1);
                 } else {
-                    // Easing out
                     progress = 1 - Math.pow(1 - progress, 3);
                     anim.mesh.position.lerpVectors(anim.start, anim.end, progress);
-                    // Add jump arc
                     anim.mesh.position.y = anim.start.y + Math.sin(progress * Math.PI) * 5;
                 }
             }
@@ -934,16 +942,10 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Initialize
         window.onload = function() {
-            // Setup init camera
             camera.position.set(0, 90, 40);
             controls.target.set(0, 0, -10);
-            
-            // Start tutorial
             loadTutorialStep(0);
-            
-            // Start render loop
             animateLoop();
         };
 
