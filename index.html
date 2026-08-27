@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* 移除原本的 body overflow 與 Absolute UI 定位，改用 Flexbox 撐滿畫面 */
+        /* 移除 body overflow，改用 Flexbox 撐滿畫面 */
         body { margin: 0; background-color: #87CEEB; font-family: 'Noto Sans TC', sans-serif; touch-action: none; overflow: hidden; }
         
         /* 對話框動畫 */
@@ -28,7 +28,7 @@
         }
         .glow-btn { animation: pulse-glow 2s infinite; }
         
-        /* 自訂卷軸，讓右側面板內容太多時可以優雅滑動 */
+        /* 自訂卷軸 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -60,7 +60,7 @@
                 🦉
             </div>
             
-            <div class="flex flex-col gap-2 mb-4 ml-14 md:ml-16">
+            <div class="flex flex-col gap-2 mb-2 ml-14 md:ml-16">
                 <h2 id="dialog-title" class="text-xl md:text-2xl font-black text-emerald-600">
                     載入中...
                 </h2>
@@ -69,25 +69,34 @@
                 </select>
             </div>
 
-            <div class="bg-emerald-50/50 rounded-2xl p-4 flex-grow border border-emerald-100 shadow-inner mb-4">
-                <p id="dialog-text" class="text-gray-700 font-bold text-base md:text-lg leading-relaxed">
-                    請稍候，準備為您佈置棋盤...
-                </p>
-            </div>
-            
-            <div class="flex justify-end gap-2 mb-4 mt-auto">
-                <button id="btn-prev" class="hidden px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors text-sm md:text-base">
+            <!-- 這個 dialog-text 先前遺失導致了黑畫面，現在補回來並確保它存在 -->
+            <p id="dialog-text" class="text-gray-700 font-bold text-sm md:text-lg leading-relaxed ml-14 md:ml-16 mb-4 min-h-[4rem]">
+                請稍候，準備為您佈置棋盤...
+            </p>
+
+            <div class="flex justify-end gap-3 mt-auto">
+                <button id="btn-prev" class="hidden px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors">
                     上一課
                 </button>
-                <button id="btn-next" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-transform active:scale-95 shadow-md flex items-center gap-2 glow-btn text-sm md:text-base whitespace-nowrap">
+                <button id="btn-next" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-transform active:scale-95 shadow-md flex items-center gap-2 glow-btn">
                     開始上課 <span>👉</span>
                 </button>
             </div>
         </div>
         
-        <button id="btn-sandbox" class="w-full py-3 mt-2 md:mt-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-base md:text-lg transition-all shadow-[0_5px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[5px] shrink-0">
-            ⚔️ 與電腦對戰練習
-        </button>
+        <div class="flex flex-col gap-2 mt-4 w-full">
+            <button id="btn-sandbox-main" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-sm md:text-lg transition-all shadow-[0_5px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[5px] shrink-0">
+                ⚔️ 與電腦對戰練習
+            </button>
+            <div id="sandbox-color-selector" class="hidden flex gap-2 w-full">
+                <button id="btn-sandbox-red" class="w-1/2 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-sm md:text-lg transition-all shadow-[0_5px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c] active:translate-y-[5px] shrink-0">
+                    🔴 當紅軍(先手)
+                </button>
+                <button id="btn-sandbox-black" class="w-1/2 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-2xl font-black text-sm md:text-lg transition-all shadow-[0_5px_0_#1f2937] active:shadow-[0_0px_0_#1f2937] active:translate-y-[5px] shrink-0">
+                    ⚫ 當黑軍(後手)
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -142,7 +151,7 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color('#87CEEB'); // Sky blue
         
-        // 加入雲朵
+        // 加入雲朵 (往遠處放避免擋住)
         for(let i=0; i<10; i++) {
             const cloudGeo = new THREE.SphereGeometry(Math.random()*15+5, 16, 16);
             const cloudMat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
@@ -151,7 +160,6 @@
             scene.add(cloud);
         }
 
-        // 使用容器的寬高來初始化相機與渲染器，而不是 window
         const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
@@ -159,16 +167,14 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
-        // 初始化視角控制器 (OrbitControls)
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2 - 0.1; 
         controls.minDistance = 30;
         controls.maxDistance = 150;
-        controls.target.set(0, 0, 0); // 視角中心調整回正中央
+        controls.target.set(0, 0, 0);
 
-        // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -185,7 +191,6 @@
         const pieceRadius = 4;
         const pieceHeight = 2.5;
 
-        // Board Mesh
         const boardGeo = new THREE.BoxGeometry(boardWidth + 12, 4, boardHeight + 12);
         const boardMat = new THREE.MeshLambertMaterial({ color: '#f5d398' }); 
         const boardMesh = new THREE.Mesh(boardGeo, boardMat);
@@ -193,54 +198,30 @@
         boardMesh.receiveShadow = true;
         scene.add(boardMesh);
 
-        // Draw Board Lines
         const lineMat = new THREE.LineBasicMaterial({ color: 0x5c3a21, linewidth: 2 });
         function gridToWorld(x, y) {
-            return new THREE.Vector3(
-                x * gridSize - boardWidth / 2,
-                0.1,
-                y * gridSize - boardHeight / 2
-            );
+            return new THREE.Vector3(x * gridSize - boardWidth / 2, 0.1, y * gridSize - boardHeight / 2);
         }
 
-        // Horizontal lines
+        // Horizontal & Vertical lines
         for (let y = 0; y <= 9; y++) {
-            const points = [];
-            points.push(gridToWorld(0, y));
-            points.push(gridToWorld(8, y));
-            const geo = new THREE.BufferGeometry().setFromPoints(points);
-            scene.add(new THREE.Line(geo, lineMat));
+            const points = [gridToWorld(0, y), gridToWorld(8, y)];
+            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), lineMat));
         }
-
-        // Vertical lines
         for (let x = 0; x <= 8; x++) {
-            const points1 = [];
-            points1.push(gridToWorld(x, 0));
-            points1.push(gridToWorld(x, 4));
-            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1), lineMat));
-            
-            const points2 = [];
-            points2.push(gridToWorld(x, 5));
-            points2.push(gridToWorld(x, 9));
-            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2), lineMat));
+            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gridToWorld(x, 0), gridToWorld(x, 4)]), lineMat));
+            scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gridToWorld(x, 5), gridToWorld(x, 9)]), lineMat));
         }
 
-        // River edges
-        const riverEdge1 = [gridToWorld(0, 4), gridToWorld(0, 5)];
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(riverEdge1), lineMat));
-        const riverEdge2 = [gridToWorld(8, 4), gridToWorld(8, 5)];
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(riverEdge2), lineMat));
-
-        // Palaces (Cross lines)
+        // River edges & Palaces
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gridToWorld(0, 4), gridToWorld(0, 5)]), lineMat));
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([gridToWorld(8, 4), gridToWorld(8, 5)]), lineMat));
         const palaces = [
-            [gridToWorld(3, 0), gridToWorld(5, 2)],
-            [gridToWorld(5, 0), gridToWorld(3, 2)],
-            [gridToWorld(3, 7), gridToWorld(5, 9)],
-            [gridToWorld(5, 7), gridToWorld(3, 9)]
+            [gridToWorld(3, 0), gridToWorld(5, 2)], [gridToWorld(5, 0), gridToWorld(3, 2)],
+            [gridToWorld(3, 7), gridToWorld(5, 9)], [gridToWorld(5, 7), gridToWorld(3, 9)]
         ];
         palaces.forEach(p => scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), lineMat)));
 
-        // River Text
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 128;
         const ctx = canvas.getContext('2d');
@@ -251,21 +232,16 @@
         ctx.fillText('楚 河           漢 界', 256, 64);
         
         const riverTex = new THREE.CanvasTexture(canvas);
-        const riverGeo = new THREE.PlaneGeometry(boardWidth, gridSize);
-        const riverMat = new THREE.MeshBasicMaterial({ map: riverTex, transparent: true });
-        const riverMesh = new THREE.Mesh(riverGeo, riverMat);
+        const riverMesh = new THREE.Mesh(new THREE.PlaneGeometry(boardWidth, gridSize), new THREE.MeshBasicMaterial({ map: riverTex, transparent: true }));
         riverMesh.rotation.x = -Math.PI / 2;
         riverMesh.position.set(0, 0.15, 0);
         scene.add(riverMesh);
 
         // --- 棋子資料與產生 ---
         const PIECE_DEF = {
-            king: { red: '帥', black: '將' },
-            advisor: { red: '仕', black: '士' },
-            elephant: { red: '相', black: '象' },
-            horse: { red: '傌', black: '馬' },
-            chariot: { red: '俥', black: '車' },
-            cannon: { red: '炮', black: '砲' },
+            king: { red: '帥', black: '將' }, advisor: { red: '仕', black: '士' },
+            elephant: { red: '相', black: '象' }, horse: { red: '傌', black: '馬' },
+            chariot: { red: '俥', black: '車' }, cannon: { red: '炮', black: '砲' },
             pawn: { red: '兵', black: '卒' }
         };
 
@@ -274,11 +250,11 @@
         let currentTurn = 'red';
         let isTutorialMode = true;
         let isPlayWithAI = false;
+        let playerColor = 'red'; 
         let currentTutorialStep = 0;
         let animations = [];
         const piecesGroup = new THREE.Group();
         scene.add(piecesGroup);
-
         const indicatorsGroup = new THREE.Group();
         scene.add(indicatorsGroup);
 
@@ -286,15 +262,11 @@
             const char = isRed ? PIECE_DEF[type].red : PIECE_DEF[type].black;
             const group = new THREE.Group();
             
-            const geo = new THREE.CylinderGeometry(pieceRadius, pieceRadius, pieceHeight, 32);
-            const mat = new THREE.MeshLambertMaterial({ color: '#ffedd5' });
-            const mesh = new THREE.Mesh(geo, mat);
+            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(pieceRadius, pieceRadius, pieceHeight, 32), new THREE.MeshLambertMaterial({ color: '#ffedd5' }));
             mesh.castShadow = true; mesh.receiveShadow = true;
             group.add(mesh);
 
-            const ringGeo = new THREE.RingGeometry(pieceRadius - 1.2, pieceRadius - 0.8, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: isRed ? '#dc2626' : '#1f2937' });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
+            const ring = new THREE.Mesh(new THREE.RingGeometry(pieceRadius - 1.2, pieceRadius - 0.8, 32), new THREE.MeshBasicMaterial({ color: isRed ? '#dc2626' : '#1f2937' }));
             ring.rotation.x = -Math.PI / 2;
             ring.position.y = pieceHeight / 2 + 0.01;
             group.add(ring);
@@ -307,10 +279,7 @@
             tCtx.fillStyle = isRed ? '#dc2626' : '#1f2937';
             tCtx.fillText(char, 64, 64);
             
-            const tTex = new THREE.CanvasTexture(tCanvas);
-            const tGeo = new THREE.PlaneGeometry(pieceRadius*1.5, pieceRadius*1.5);
-            const tMat = new THREE.MeshBasicMaterial({ map: tTex, transparent: true });
-            const textMesh = new THREE.Mesh(tGeo, tMat);
+            const textMesh = new THREE.Mesh(new THREE.PlaneGeometry(pieceRadius*1.5, pieceRadius*1.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(tCanvas), transparent: true }));
             textMesh.rotation.x = -Math.PI / 2;
             textMesh.position.y = pieceHeight / 2 + 0.02;
             if (!isRed) textMesh.rotation.z = Math.PI;
@@ -318,7 +287,6 @@
             group.add(textMesh);
             const pos = gridToWorld(gridX, gridY);
             group.position.set(pos.x, pieceHeight/2, pos.z);
-            
             return group;
         }
 
@@ -332,14 +300,12 @@
         }
 
         function clearBoard() {
-            piecesGroup.children.forEach(c => {
-                if(c.geometry) c.geometry.dispose();
-                if(c.material) c.material.dispose();
-            });
+            piecesGroup.children.forEach(c => { if(c.geometry) c.geometry.dispose(); if(c.material) c.material.dispose(); });
             piecesGroup.clear();
             boardState = Array(10).fill(null).map(() => Array(9).fill(null));
             clearIndicators();
             selectedPiece = null;
+            animations = [];
         }
 
         // --- 走法規則驗證 ---
@@ -372,29 +338,21 @@
                     if (isCrossRiver) return { valid: false, msg: "相/象太胖了，不能過河！" };
                     const eyeX = piece.gridX + dx/2;
                     const eyeY = piece.gridY + dy/2;
-                    // 新增傳回 destX 與 destY 以便畫出黑色禁走區
                     if (boardState[eyeY][eyeX] !== null) return { valid: false, msg: "哎呀！田字中間有棋子擋住（塞象眼），飛不過去！", blockX: eyeX, blockY: eyeY, destX: endX, destY: endY };
                     return { valid: true };
                 case 'horse':
-                    if (!((absDx === 1 && absDy === 2) || (absDx === 2 && absDy === 1))) {
-                        return { valid: false, msg: "馬要走『日』字型喔！" };
-                    }
+                    if (!((absDx === 1 && absDy === 2) || (absDx === 2 && absDy === 1))) return { valid: false, msg: "馬要走『日』字型喔！" };
                     const blockX = absDx === 2 ? piece.gridX + dx/2 : piece.gridX;
                     const blockY = absDy === 2 ? piece.gridY + dy/2 : piece.gridY;
-                    // 新增傳回 destX 與 destY 以便畫出黑色禁走區
                     if (boardState[blockY][blockX] !== null) return { valid: false, msg: "馬腳被擋住了（拐馬腳），跳不過去！", blockX: blockX, blockY: blockY, destX: endX, destY: endY };
                     return { valid: true };
                 case 'chariot':
                     if (absDx !== 0 && absDy !== 0) return { valid: false, msg: "車只能直直走或橫橫走喔！" };
                     let countC = 0;
                     if (absDx !== 0) {
-                        let min = Math.min(piece.gridX, endX);
-                        let max = Math.max(piece.gridX, endX);
-                        for(let i=min+1; i<max; i++) if(boardState[piece.gridY][i]) countC++;
+                        for(let i=Math.min(piece.gridX, endX)+1; i<Math.max(piece.gridX, endX); i++) if(boardState[piece.gridY][i]) countC++;
                     } else {
-                        let min = Math.min(piece.gridY, endY);
-                        let max = Math.max(piece.gridY, endY);
-                        for(let i=min+1; i<max; i++) if(boardState[i][piece.gridX]) countC++;
+                        for(let i=Math.min(piece.gridY, endY)+1; i<Math.max(piece.gridY, endY); i++) if(boardState[i][piece.gridX]) countC++;
                     }
                     if (countC > 0) return { valid: false, msg: "車子遇到障礙物了，中間不能有其他棋子喔！" };
                     return { valid: true };
@@ -402,13 +360,9 @@
                     if (absDx !== 0 && absDy !== 0) return { valid: false, msg: "炮只能直直走或橫橫走喔！" };
                     let countP = 0;
                     if (absDx !== 0) {
-                        let min = Math.min(piece.gridX, endX);
-                        let max = Math.max(piece.gridX, endX);
-                        for(let i=min+1; i<max; i++) if(boardState[piece.gridY][i]) countP++;
+                        for(let i=Math.min(piece.gridX, endX)+1; i<Math.max(piece.gridX, endX); i++) if(boardState[piece.gridY][i]) countP++;
                     } else {
-                        let min = Math.min(piece.gridY, endY);
-                        let max = Math.max(piece.gridY, endY);
-                        for(let i=min+1; i<max; i++) if(boardState[i][piece.gridX]) countP++;
+                        for(let i=Math.min(piece.gridY, endY)+1; i<Math.max(piece.gridY, endY); i++) if(boardState[i][piece.gridX]) countP++;
                     }
                     if (target) {
                         if (countP !== 1) return { valid: false, msg: "炮要吃子，中間一定要『剛好隔著一顆棋子』當跳板喔！" };
@@ -417,21 +371,15 @@
                     }
                     return { valid: true };
                 case 'pawn':
-                    // 修正：兵/卒無論如何，每次移動的總格數(X變化量 + Y變化量)一定只能是 1
-                    if (absDx + absDy !== 1) {
-                        return { valid: false, msg: "兵/卒一次只能走一格喔！" };
-                    }
+                    // 完美修正：兵/卒無論如何，每次移動的絕對格數必須剛好是 1
+                    if (absDx + absDy !== 1) return { valid: false, msg: "兵/卒一次只能走一格喔！" };
                     
                     if (piece.isRed) {
                         if (dy < 0) return { valid: false, msg: "兵不能後退喔！" };
-                        if (!isCrossRiver && dx !== 0) {
-                            return { valid: false, msg: "兵過河前，只能直直往前走一格！" };
-                        }
+                        if (!isCrossRiver && dx !== 0) return { valid: false, msg: "兵過河前，只能直直往前走一格！" };
                     } else {
                         if (dy > 0) return { valid: false, msg: "卒不能後退喔！" };
-                        if (!isCrossRiver && dx !== 0) {
-                            return { valid: false, msg: "卒過河前，只能直直往前走一格！" };
-                        }
+                        if (!isCrossRiver && dx !== 0) return { valid: false, msg: "卒過河前，只能直直往前走一格！" };
                     }
                     return { valid: true };
             }
@@ -441,9 +389,7 @@
         function showIndicators(piece) {
             clearIndicators();
             const pos = gridToWorld(piece.gridX, piece.gridY);
-            const selGeo = new THREE.RingGeometry(pieceRadius + 0.5, pieceRadius + 1.5, 32);
-            const selMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
-            const selMesh = new THREE.Mesh(selGeo, selMat);
+            const selMesh = new THREE.Mesh(new THREE.RingGeometry(pieceRadius + 0.5, pieceRadius + 1.5, 32), new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide }));
             selMesh.rotation.x = -Math.PI/2;
             selMesh.position.set(pos.x, 0.2, pos.z);
             indicatorsGroup.add(selMesh);
@@ -452,63 +398,43 @@
 
             for (let y = 0; y < 10; y++) {
                 for (let x = 0; x < 9; x++) {
-                    if (isTutorialMode) {
-                        const step = tutorialSteps[currentTutorialStep];
-                        if (step.allowedPiece && piece.type !== step.allowedPiece) continue;
-                    }
+                    if (isTutorialMode && tutorialSteps[currentTutorialStep].allowedPiece && piece.type !== tutorialSteps[currentTutorialStep].allowedPiece) continue;
 
                     const rule = checkRule(piece, x, y);
                     if (rule.valid) {
                         const tPos = gridToWorld(x, y);
-                        const iGeo = new THREE.BoxGeometry(4, 0.5, 4);
                         const targetPiece = boardState[y][x];
-                        const iMat = new THREE.MeshBasicMaterial({ 
-                            color: targetPiece ? 0xef4444 : 0x4ade80, 
-                            transparent: true, opacity: 0.7 
-                        });
-                        const iMesh = new THREE.Mesh(iGeo, iMat);
+                        const iMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 4), new THREE.MeshBasicMaterial({ color: targetPiece ? 0xef4444 : 0x4ade80, transparent: true, opacity: 0.7 }));
                         iMesh.position.set(tPos.x, 0.3, tPos.z);
                         iMesh.userData = { isIndicator: true, gridX: x, gridY: y };
                         indicatorsGroup.add(iMesh);
 
                         if (targetPiece) {
-                            const ringGeo = new THREE.RingGeometry(pieceRadius - 0.5, pieceRadius + 0.5, 32);
-                            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-                            const targetRing = new THREE.Mesh(ringGeo, ringMat);
+                            const targetRing = new THREE.Mesh(new THREE.RingGeometry(pieceRadius - 0.5, pieceRadius + 0.5, 32), new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide }));
                             targetRing.rotation.x = -Math.PI / 2;
                             targetRing.position.set(tPos.x, pieceHeight + 0.5, tPos.z);
                             indicatorsGroup.add(targetRing);
                         }
                     } else if (rule.blockX !== undefined && rule.blockY !== undefined) {
-                        // 1. 顯示被擋住的紅色 X
                         const blockKey = `${rule.blockX},${rule.blockY}`;
                         if (!generatedBlocks.has(blockKey)) {
                             generatedBlocks.add(blockKey);
-                            const bPos = gridToWorld(rule.blockX, rule.blockY);
-                            
                             const xGroup = new THREE.Group();
-                            const xMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                             const xGeo = new THREE.BoxGeometry(3, 0.5, 0.8);
-                            const m1 = new THREE.Mesh(xGeo, xMat);
-                            m1.rotation.y = Math.PI / 4;
-                            const m2 = new THREE.Mesh(xGeo, xMat);
-                            m2.rotation.y = -Math.PI / 4;
-                            xGroup.add(m1);
-                            xGroup.add(m2);
+                            const xMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                            const m1 = new THREE.Mesh(xGeo, xMat); m1.rotation.y = Math.PI / 4;
+                            const m2 = new THREE.Mesh(xGeo, xMat); m2.rotation.y = -Math.PI / 4;
+                            xGroup.add(m1); xGroup.add(m2);
+                            const bPos = gridToWorld(rule.blockX, rule.blockY);
                             xGroup.position.set(bPos.x, pieceHeight + 1.5, bPos.z);
                             indicatorsGroup.add(xGroup);
                         }
 
-                        // 2. 顯示無法到達的目的地的黑色半透明方塊
                         const destKey = `dest_${rule.destX},${rule.destY}`;
-                        if (rule.destX !== undefined && rule.destY !== undefined && !generatedBlocks.has(destKey)) {
+                        if (rule.destX !== undefined && !generatedBlocks.has(destKey)) {
                             generatedBlocks.add(destKey);
+                            const dMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.6, 4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }));
                             const dPos = gridToWorld(rule.destX, rule.destY);
-                            
-                            const dGeo = new THREE.BoxGeometry(4, 0.6, 4); 
-                            const dMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 });
-                            const dMesh = new THREE.Mesh(dGeo, dMat);
-                            // 稍微提高避免Z-fighting重疊
                             dMesh.position.set(dPos.x, 0.35, dPos.z);
                             indicatorsGroup.add(dMesh);
                         }
@@ -518,10 +444,7 @@
         }
 
         function clearIndicators() {
-            indicatorsGroup.children.forEach(c => {
-                if(c.geometry) c.geometry.dispose();
-                if(c.material) c.material.dispose();
-            });
+            indicatorsGroup.children.forEach(c => { if(c.geometry) c.geometry.dispose(); if(c.material) c.material.dispose(); });
             indicatorsGroup.clear();
         }
 
@@ -540,11 +463,8 @@
             selectedPiece = null;
 
             animations.push({
-                mesh: piece.mesh,
-                start: startPos,
-                end: new THREE.Vector3(endPos.x, endPos.y, endPos.z),
-                startTime: performance.now(),
-                duration: 300,
+                mesh: piece.mesh, start: startPos, end: new THREE.Vector3(endPos.x, endPos.y, endPos.z),
+                startTime: performance.now(), duration: 300,
                 onComplete: () => {
                     let isGameOver = false;
                     
@@ -558,44 +478,36 @@
                             const dialogTitle = document.getElementById('dialog-title');
                             const dialogText = document.getElementById('dialog-text');
                             
-                            if (target.isRed) {
+                            if (target.isRed === (playerColor === 'red')) {
                                 dialogTitle.innerHTML = "😭 挑戰失敗";
-                                dialogText.innerHTML = "你的「帥」被電腦吃掉了！沒關係，點擊「重新開始對局」再來一次！";
+                                dialogText.innerHTML = `你的「${target.isRed ? '帥' : '將'}」被吃掉了！點擊重新開始再來一次！`;
                             } else {
                                 dialogTitle.innerHTML = "🏆 挑戰成功！";
-                                dialogText.innerHTML = "太棒了！你吃掉了電腦的「將」，你贏得這場比賽了！🎉";
+                                dialogText.innerHTML = `太棒了！你吃掉了電腦的老大，贏得比賽了！🎉`;
                             }
                             
-                            isPlayWithAI = false; 
-                            currentTurn = 'none'; 
+                            isPlayWithAI = false; currentTurn = 'none'; 
                             
                             const btnNext = document.getElementById('btn-next');
                             btnNext.innerHTML = "重新開始對局 🔄";
                             btnNext.disabled = false;
                             btnNext.classList.remove('hidden');
                         }
-                    } else {
-                        playSound('move');
-                    }
+                    } else { playSound('move'); }
                     
                     if (isGameOver) return;
-                    
                     currentTurn = currentTurn === 'red' ? 'black' : 'red';
                     
                     if (isTutorialMode) {
                         checkTutorialProgress(piece, target);
                     } else if (isPlayWithAI) {
-                        if (currentTurn === 'black') {
-                            const dialogTitle = document.getElementById('dialog-title');
-                            const dialogText = document.getElementById('dialog-text');
-                            dialogTitle.innerHTML = "🤖 電腦思考中...";
-                            dialogText.innerHTML = "換黑方走囉，讓我想想看...";
-                            setTimeout(makeAIMove, 1500);
+                        if (currentTurn !== playerColor) {
+                            document.getElementById('dialog-title').innerHTML = "🤖 電腦思考中...";
+                            document.getElementById('dialog-text').innerHTML = `換電腦走囉，讓我想想看...`;
+                            setTimeout(makeAIMove, 1000);
                         } else {
-                            const dialogTitle = document.getElementById('dialog-title');
-                            const dialogText = document.getElementById('dialog-text');
-                            dialogTitle.innerHTML = "⚔️ 你的回合";
-                            dialogText.innerHTML = "換你了！紅方先走。<br>點擊棋子，再點擊綠色方塊移動。";
+                            document.getElementById('dialog-title').innerHTML = "⚔️ 你的回合";
+                            document.getElementById('dialog-text').innerHTML = `換你了！你是${playerColor==='red'?'紅':'黑'}方。`;
                         }
                     }
                 }
@@ -603,18 +515,16 @@
         }
 
         function makeAIMove() {
-            if (currentTurn !== 'black' || isTutorialMode || !isPlayWithAI) return;
+            if (currentTurn === playerColor || isTutorialMode || !isPlayWithAI) return;
             
             let possibleMoves = [];
             for (let y = 0; y < 10; y++) {
                 for (let x = 0; x < 9; x++) {
                     const p = boardState[y][x];
-                    if (p && !p.isRed) {
+                    if (p && p.isRed !== (playerColor === 'red')) {
                         for (let ty = 0; ty < 10; ty++) {
                             for (let tx = 0; tx < 9; tx++) {
-                                if (checkRule(p, tx, ty).valid) {
-                                    possibleMoves.push({ piece: p, endX: tx, endY: ty, target: boardState[ty][tx] });
-                                }
+                                if (checkRule(p, tx, ty).valid) possibleMoves.push({ piece: p, endX: tx, endY: ty, target: boardState[ty][tx] });
                             }
                         }
                     }
@@ -623,300 +533,223 @@
 
             if (possibleMoves.length > 0) {
                 let captureMoves = possibleMoves.filter(m => m.target !== null);
-                let chosenMove;
-                if (captureMoves.length > 0 && Math.random() > 0.5) {
-                    chosenMove = captureMoves[Math.floor(Math.random() * captureMoves.length)];
-                } else {
-                    chosenMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                }
+                let chosenMove = (captureMoves.length > 0 && Math.random() > 0.5) 
+                    ? captureMoves[Math.floor(Math.random() * captureMoves.length)]
+                    : possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
                 executeMove(chosenMove.piece, chosenMove.endX, chosenMove.endY);
             }
         }
 
         function showHint(msg) {
             const box = document.getElementById('hint-box');
-            box.innerText = msg;
-            box.classList.remove('hidden');
-            playSound('error');
-            setTimeout(() => {
-                box.classList.add('hidden');
-            }, 3000);
+            box.innerText = msg; box.classList.remove('hidden'); playSound('error');
+            setTimeout(() => box.classList.add('hidden'), 3000);
         }
 
-        // --- 互動系統 ---
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         let pointerDownPos = {x:0, y:0};
 
-        container.addEventListener('pointerdown', (e) => {
-            pointerDownPos = {x: e.clientX, y: e.clientY};
-        });
-
-        container.addEventListener('pointerup', (e) => {
+        container.addEventListener('pointerdown', e => pointerDownPos = {x: e.clientX, y: e.clientY});
+        container.addEventListener('pointerup', e => {
             if (Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y) > 10) return;
-            if (isPlayWithAI && currentTurn === 'black') return;
+            if (isPlayWithAI && currentTurn !== playerColor) return;
 
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
             raycaster.setFromCamera(mouse, camera);
 
             if (selectedPiece) {
                 const iIntersects = raycaster.intersectObjects(indicatorsGroup.children);
-                if (iIntersects.length > 0) {
-                    const indicator = iIntersects[0].object;
-                    if(indicator.userData.isIndicator) {
-                        executeMove(selectedPiece, indicator.userData.gridX, indicator.userData.gridY);
-                        return;
-                    }
+                if (iIntersects.length > 0 && iIntersects[0].object.userData.isIndicator) {
+                    executeMove(selectedPiece, iIntersects[0].object.userData.gridX, iIntersects[0].object.userData.gridY);
+                    return;
                 }
             }
 
             const intersects = raycaster.intersectObjects(piecesGroup.children, true);
             if (intersects.length > 0) {
                 let object = intersects[0].object;
-                while (object.parent && object.parent !== piecesGroup) {
-                    object = object.parent;
-                }
-
+                while (object.parent && object.parent !== piecesGroup) object = object.parent;
                 if (object.userData && object.userData.type) {
                     const piece = object.userData;
-                    
                     if (piece.isRed !== (currentTurn === 'red')) {
                         if (selectedPiece) {
                             const rule = checkRule(selectedPiece, piece.gridX, piece.gridY);
                             if (!rule.valid) showHint(rule.msg);
-                        } else {
-                            showHint("現在不是這個顏色的回合喔！");
-                        }
+                        } else showHint("現在不是這個顏色的回合喔！");
                         return;
                     }
-
-                    if (isTutorialMode) {
-                        const step = tutorialSteps[currentTutorialStep];
-                        if (step.allowedPiece && piece.type !== step.allowedPiece) {
-                            showHint(`這關我們要練習的是「${PIECE_DEF[step.allowedPiece].red}」喔！`);
-                            return;
-                        }
+                    if (isTutorialMode && tutorialSteps[currentTutorialStep].allowedPiece && piece.type !== tutorialSteps[currentTutorialStep].allowedPiece) {
+                        showHint(`這關我們要練習的是「${PIECE_DEF[tutorialSteps[currentTutorialStep].allowedPiece].red}」喔！`);
+                        return;
                     }
-
                     selectedPiece = piece;
                     showIndicators(piece);
                     playSound('move');
                 }
-            } else {
-                if (selectedPiece) {
-                    const bIntersects = raycaster.intersectObject(boardMesh);
-                    if (bIntersects.length > 0) {
-                        const point = bIntersects[0].point;
-                        const gridX = Math.round((point.x + boardWidth/2) / gridSize);
-                        const gridY = Math.round((point.z + boardHeight/2) / gridSize);
-                        
-                        if (gridX>=0 && gridX<=8 && gridY>=0 && gridY<=9) {
-                            const rule = checkRule(selectedPiece, gridX, gridY);
-                            if (!rule.valid) {
-                                showHint(rule.msg);
-                            }
-                        }
+            } else if (selectedPiece) {
+                const bIntersects = raycaster.intersectObject(boardMesh);
+                if (bIntersects.length > 0) {
+                    const gridX = Math.round((bIntersects[0].point.x + boardWidth/2) / gridSize);
+                    const gridY = Math.round((bIntersects[0].point.z + boardHeight/2) / gridSize);
+                    if (gridX>=0 && gridX<=8 && gridY>=0 && gridY<=9) {
+                        const rule = checkRule(selectedPiece, gridX, gridY);
+                        if (!rule.valid) showHint(rule.msg);
                     }
-                    clearIndicators();
-                    selectedPiece = null;
                 }
+                clearIndicators();
+                selectedPiece = null;
             }
         });
 
-        // --- 教學系統與流程 ---
         const dialogTitle = document.getElementById('dialog-title');
         const dialogText = document.getElementById('dialog-text');
         const btnNext = document.getElementById('btn-next');
         const btnPrev = document.getElementById('btn-prev');
-        const btnSandbox = document.getElementById('btn-sandbox');
+        const btnSandboxMain = document.getElementById('btn-sandbox-main');
+        const colorSelector = document.getElementById('sandbox-color-selector');
+        const btnSandboxRed = document.getElementById('btn-sandbox-red');
+        const btnSandboxBlack = document.getElementById('btn-sandbox-black');
         const tutorialSelector = document.getElementById('tutorial-selector');
 
         const tutorialSteps = [
-            {
-                title: "1. 認識棋盤",
-                text: "嗨！歡迎來到象棋小學堂！象棋有「紅軍」和「黑軍」。<br><br>我們今天來當紅軍司令吧！看到中間的「楚河漢界」了嗎？那是兩軍的邊界喔！<br>💡 <b>提示：你可以用手指或滑鼠旋轉、縮放棋盤喔！</b>",
-                setup: () => { clearBoard(); camera.position.set(0, 75, 80); controls.target.set(0,0,-10); },
-                autoAdvance: false
-            },
-            {
-                title: "2. 帥與將 (老大)",
-                text: "紅軍的老大叫「帥」，黑軍的老大叫「將」。如果老大被吃掉就輸了！<br>他們只能在畫有斜線的「九宮格」裡面直走或橫走一格。<br>👉 <b>請試著移動紅色的「帥」一格！</b>",
-                allowedPiece: 'king',
-                setup: () => { clearBoard(); addPiece('king', true, 4, 1); addPiece('king', false, 4, 8); currentTurn = 'red'; },
-                checkMove: (piece) => piece.type === 'king' && piece.isRed
-            },
-            {
-                title: "3. 仕與士 (保鑣)",
-                text: "紅軍保鑣是「仕」，黑軍是「士」。他們也只能在九宮格裡，但只能「斜著走」一格喔！<br>👉 <b>請試著斜斜地移動紅色的「仕」！</b>",
-                allowedPiece: 'advisor',
-                setup: () => { clearBoard(); addPiece('advisor', true, 3, 0); addPiece('advisor', false, 5, 9); currentTurn = 'red'; },
-                checkMove: (piece) => piece.type === 'advisor' && piece.isRed
-            },
-            {
-                title: "4. 相與象 (大象)",
-                text: "紅軍是「相」，黑軍是「象」。走「田」字型（斜走兩格），而且太胖了不能過河。<br>如果田字中間有棋子（塞象眼），就飛不過去！<br>👉 <b>請試著移動紅色的「相」！</b>",
-                allowedPiece: 'elephant',
-                setup: () => { clearBoard(); addPiece('elephant', true, 2, 0); addPiece('elephant', false, 6, 9); currentTurn = 'red'; },
-                checkMove: (piece) => piece.type === 'elephant' && piece.isRed
-            },
-            {
-                title: "5. 俥與車 (戰車)",
-                text: "紅黑軍都唸作「車」！只要沒有人擋路，直走或橫走多遠都可以！超級厲害！<br>👉 <b>請用紅色的「俥」直衝過去，吃掉前面的黑棋！</b>",
-                allowedPiece: 'chariot',
-                setup: () => { clearBoard(); addPiece('chariot', true, 0, 2); addPiece('pawn', false, 0, 7); currentTurn = 'red'; },
-                checkMove: (piece, target) => piece.type === 'chariot' && piece.isRed && target !== null
-            },
-            {
-                title: "6. 傌與馬 (馬)",
-                text: "紅黑軍都唸作「馬」！走「日」字型（直走一格，再斜走一格）。<br>如果直走的第一格有棋子擋住（拐馬腳），就跳不過去。<br>👉 <b>請讓紅色的「傌」跳一步日字！</b>",
-                allowedPiece: 'horse',
-                setup: () => { clearBoard(); addPiece('horse', true, 1, 0); addPiece('pawn', true, 1, 1); addPiece('horse', false, 7, 9); currentTurn = 'red'; },
-                checkMove: (piece) => piece.type === 'horse' && piece.isRed
-            },
-            {
-                title: "7. 炮與砲 (大砲)",
-                text: "紅黑軍都唸作「炮」！走路跟車一樣。但是「吃子」時，中間一定要剛好隔著一顆棋子當跳板喔！<br>👉 <b>請用紅色的「炮」隔著棋子，發射吃掉黑棋！</b>",
-                allowedPiece: 'cannon',
-                setup: () => { clearBoard(); addPiece('cannon', true, 1, 2); addPiece('pawn', true, 1, 5); addPiece('chariot', false, 1, 9); currentTurn = 'red'; },
-                checkMove: (piece, target) => piece.type === 'cannon' && piece.isRed && target !== null
-            },
-            {
-                title: "8. 兵與卒 (小兵)",
-                text: "紅軍叫「兵」，黑軍叫「卒」。過河前只能直直往前走一步。<br>過河之後，可以往前、往左、往右走，永遠不能後退！<br>👉 <b>請讓已經過河的紅色「兵」往旁邊走一步！</b>",
-                allowedPiece: 'pawn',
-                setup: () => { clearBoard(); addPiece('pawn', true, 4, 5); addPiece('pawn', false, 4, 4); currentTurn = 'red'; },
-                checkMove: (piece) => piece.type === 'pawn' && piece.isRed
-            },
-            {
-                title: "🎉 恭喜畢業！",
-                text: "你已經認識所有棋子了！太厲害了！<br><br>現在點擊下方的「與電腦對戰練習」按鈕，來挑戰可愛的電腦對手吧！",
-                setup: () => { setupSandbox(); },
-                autoAdvance: false
-            }
+            { title: "1. 認識棋盤", text: "嗨！歡迎來到象棋小學堂！我們今天來當紅軍司令吧！看到中間的「楚河漢界」了嗎？那是邊界喔！<br>💡 <b>提示：用手指或滑鼠可以旋轉、縮放棋盤喔！</b>", setup: () => { clearBoard(); camera.position.set(0, 75, 80); controls.target.set(0,0,-10); }, autoAdvance: false },
+            { title: "2. 帥與將 (老大)", text: "老大只能在畫有斜線的「九宮格」裡面直走或橫走一格。<br>👉 <b>請試著移動紅色的「帥」一格！</b>", allowedPiece: 'king', setup: () => { clearBoard(); addPiece('king', true, 4, 1); addPiece('king', false, 4, 8); currentTurn = 'red'; }, checkMove: (piece) => piece.type === 'king' && piece.isRed },
+            { title: "3. 仕與士 (保鑣)", text: "他們也只能在九宮格裡，但只能「斜著走」一格喔！<br>👉 <b>請試著斜斜地移動紅色的「仕」！</b>", allowedPiece: 'advisor', setup: () => { clearBoard(); addPiece('advisor', true, 3, 0); addPiece('advisor', false, 5, 9); currentTurn = 'red'; }, checkMove: (piece) => piece.type === 'advisor' && piece.isRed },
+            { title: "4. 相與象 (大象)", text: "走「田」字型（斜走兩格），不能過河。中間有棋子（塞象眼）就飛不過去！<br>👉 <b>請試著移動紅色的「相」！</b>", allowedPiece: 'elephant', setup: () => { clearBoard(); addPiece('elephant', true, 2, 0); addPiece('elephant', false, 6, 9); currentTurn = 'red'; }, checkMove: (piece) => piece.type === 'elephant' && piece.isRed },
+            { title: "5. 俥與車 (戰車)", text: "只要沒人擋路，直走或橫走多遠都可以！<br>👉 <b>請用紅色的「俥」直衝過去，吃掉黑棋！</b>", allowedPiece: 'chariot', setup: () => { clearBoard(); addPiece('chariot', true, 0, 2); addPiece('pawn', false, 0, 7); currentTurn = 'red'; }, checkMove: (piece, target) => piece.type === 'chariot' && piece.isRed && target !== null },
+            { title: "6. 傌與馬 (馬)", text: "走「日」字型。如果直走第一格有棋子（拐馬腳），就跳不過去。<br>👉 <b>請讓紅色的「傌」跳一步日字！</b>", allowedPiece: 'horse', setup: () => { clearBoard(); addPiece('horse', true, 1, 0); addPiece('pawn', true, 1, 1); addPiece('horse', false, 7, 9); currentTurn = 'red'; }, checkMove: (piece) => piece.type === 'horse' && piece.isRed },
+            { title: "7. 炮與砲 (大砲)", text: "走路跟車一樣。但「吃子」時，中間一定要剛好隔著一顆棋當跳板！<br>👉 <b>請用紅色的「炮」發射吃掉黑棋！</b>", allowedPiece: 'cannon', setup: () => { clearBoard(); addPiece('cannon', true, 1, 2); addPiece('pawn', true, 1, 5); addPiece('chariot', false, 1, 9); currentTurn = 'red'; }, checkMove: (piece, target) => piece.type === 'cannon' && piece.isRed && target !== null },
+            { title: "8. 兵與卒 (小兵)", text: "過河前只能往前走一步。過河後，可往前、左、右走，永遠不能後退！<br>👉 <b>請讓過河的「兵」往旁邊走一步！</b>", allowedPiece: 'pawn', setup: () => { clearBoard(); addPiece('pawn', true, 4, 5); addPiece('pawn', false, 4, 4); currentTurn = 'red'; }, checkMove: (piece) => piece.type === 'pawn' && piece.isRed },
+            { title: "🎉 恭喜畢業！", text: "你已經認識所有棋子了！太厲害了！<br><br>現在點擊下方的「與電腦對戰練習」，來選擇陣營並挑戰對手吧！", setup: () => { clearBoard(); camera.position.set(0, 75, 80); controls.target.set(0, 0, -10); }, autoAdvance: false }
         ];
 
-        // 初始化課程下拉選單
         tutorialSteps.forEach((step, index) => {
             const option = document.createElement('option');
-            option.value = index;
-            option.text = step.title;
+            option.value = index; option.text = step.title;
             tutorialSelector.appendChild(option);
         });
 
-        // 監聽下拉選單變化
-        tutorialSelector.addEventListener('change', (e) => {
-            isPlayWithAI = false; 
-            loadTutorialStep(parseInt(e.target.value));
-        });
+        tutorialSelector.addEventListener('change', e => { isPlayWithAI = false; loadTutorialStep(parseInt(e.target.value)); });
 
         function loadTutorialStep(index) {
             if (index < 0 || index >= tutorialSteps.length) return;
-            
-            isTutorialMode = true;
-            isPlayWithAI = false;
-            currentTutorialStep = index;
+            isTutorialMode = true; isPlayWithAI = false; currentTutorialStep = index;
             const step = tutorialSteps[index];
             
-            // 更新 UI 標題與選單狀態
-            dialogTitle.innerHTML = step.title;
-            tutorialSelector.value = index;
-            tutorialSelector.classList.remove('hidden');
+            // 安全防護：確保 DOM 元素存在再操作
+            if (dialogTitle) dialogTitle.innerHTML = step.title;
+            if (tutorialSelector) {
+                tutorialSelector.value = index;
+                tutorialSelector.classList.remove('hidden');
+            }
+            if (dialogText) dialogText.innerHTML = step.text;
             
-            dialogText.innerHTML = step.text;
+            if (btnSandboxMain) {
+                btnSandboxMain.classList.remove('hidden');
+                if (index === tutorialSteps.length - 1) btnSandboxMain.classList.add('glow-btn');
+                else btnSandboxMain.classList.remove('glow-btn');
+            }
+            if (colorSelector) colorSelector.classList.add('hidden');
             
             step.setup();
             
-            btnPrev.classList.toggle('hidden', index === 0);
-            
+            if (btnPrev) btnPrev.classList.toggle('hidden', index === 0);
             if (index === tutorialSteps.length - 1) {
-                btnNext.classList.add('hidden');
-                btnSandbox.classList.add('glow-btn');
+                if(btnNext) btnNext.classList.add('hidden');
             } else if (step.autoAdvance === false) {
-                btnNext.innerHTML = "下一步 👉";
-                btnNext.classList.remove('hidden');
-                btnNext.disabled = false;
+                if(btnNext) {
+                    btnNext.innerHTML = "下一步 👉"; btnNext.classList.remove('hidden'); btnNext.disabled = false;
+                }
             } else {
-                btnNext.innerHTML = "等你完成任務...";
-                btnNext.disabled = true;
-                btnNext.classList.remove('hidden');
+                if(btnNext) {
+                    btnNext.innerHTML = "等你完成任務..."; btnNext.disabled = true; btnNext.classList.remove('hidden');
+                }
             }
         }
 
         function checkTutorialProgress(movedPiece, targetPiece) {
-            const step = tutorialSteps[currentTutorialStep];
-            if (step.checkMove && step.checkMove(movedPiece, targetPiece)) {
+            if (tutorialSteps[currentTutorialStep].checkMove && tutorialSteps[currentTutorialStep].checkMove(movedPiece, targetPiece)) {
                 playSound('success');
-                dialogTitle.innerHTML = "🌟 太棒了！";
-                dialogText.innerHTML = "你做到了！完全正確喔！";
-                btnNext.innerHTML = "下一課 👉";
-                btnNext.disabled = false;
-                btnNext.classList.add('glow-btn');
+                if(dialogTitle) dialogTitle.innerHTML = "🌟 太棒了！";
+                if(dialogText) dialogText.innerHTML = "你做到了！完全正確喔！";
+                if(btnNext) {
+                    btnNext.innerHTML = "下一課 👉"; btnNext.disabled = false; btnNext.classList.add('glow-btn');
+                }
             }
         }
 
-        btnNext.addEventListener('click', () => {
+        if(btnNext) btnNext.addEventListener('click', () => {
             btnNext.classList.remove('glow-btn');
-            if (isPlayWithAI) {
-                setupSandbox();
-            } else {
-                loadTutorialStep(currentTutorialStep + 1);
-            }
+            if (isPlayWithAI) setupSandbox(playerColor);
+            else loadTutorialStep(currentTutorialStep + 1);
         });
+        if(btnPrev) btnPrev.addEventListener('click', () => loadTutorialStep(currentTutorialStep - 1));
 
-        btnPrev.addEventListener('click', () => {
-            loadTutorialStep(currentTutorialStep - 1);
-        });
-
-        function setupSandbox() {
+        function setupSandbox(color) {
             clearBoard();
-            isTutorialMode = false;
-            isPlayWithAI = true;
-            currentTurn = 'red';
+            isTutorialMode = false; isPlayWithAI = true; currentTurn = 'red'; playerColor = color;
             
-            dialogTitle.innerHTML = "⚔️ 與電腦對戰";
-            tutorialSelector.classList.add('hidden'); // 對戰模式隱藏選單
+            if(dialogTitle) dialogTitle.innerHTML = "⚔️ 與電腦對戰";
+            if(tutorialSelector) tutorialSelector.classList.add('hidden');
+            if(dialogText) dialogText.innerHTML = `準備好了嗎？你是${playerColor==='red'?'紅':'黑'}方。<br>${playerColor==='red'?'紅方先走，點擊開始。':'紅方先走，請稍候...'}`;
+            if(btnNext) { btnNext.innerHTML = "重新開始 🔄"; btnNext.disabled = false; btnNext.classList.remove('hidden'); }
             
-            dialogText.innerHTML = "準備好了嗎？你是紅方先走。<br>點擊棋子，再點擊綠色方塊移動。";
-            btnNext.innerHTML = "重新開始對局 🔄";
-            btnNext.disabled = false;
-            btnNext.classList.remove('hidden');
-            btnSandbox.classList.remove('glow-btn');
-            btnPrev.classList.add('hidden');
+            if(btnSandboxMain) btnSandboxMain.classList.add('hidden');
+            if(colorSelector) colorSelector.classList.remove('hidden');
+            if(btnSandboxRed) btnSandboxRed.classList.remove('glow-btn');
+            if(btnSandboxBlack) btnSandboxBlack.classList.remove('glow-btn');
+            if(btnPrev) btnPrev.classList.add('hidden');
             
-            camera.position.set(0, 75, 80);
-            controls.target.set(0,0,-10);
+            if (playerColor === 'red') {
+                camera.position.set(0, 75, 80); controls.target.set(0, 0, -10);
+            } else {
+                camera.position.set(0, 75, -100); controls.target.set(0, 0, 10);
+            }
+            controls.update();
 
             const setupData = [
-                // Red
                 ['chariot',true,0,0], ['horse',true,1,0], ['elephant',true,2,0], ['advisor',true,3,0], ['king',true,4,0], ['advisor',true,5,0], ['elephant',true,6,0], ['horse',true,7,0], ['chariot',true,8,0],
                 ['cannon',true,1,2], ['cannon',true,7,2],
                 ['pawn',true,0,3], ['pawn',true,2,3], ['pawn',true,4,3], ['pawn',true,6,3], ['pawn',true,8,3],
-                // Black
                 ['chariot',false,0,9], ['horse',false,1,9], ['elephant',false,2,9], ['advisor',false,3,9], ['king',false,4,9], ['advisor',false,5,9], ['elephant',false,6,9], ['horse',false,7,9], ['chariot',false,8,9],
                 ['cannon',false,1,7], ['cannon',false,7,7],
                 ['pawn',false,0,6], ['pawn',false,2,6], ['pawn',false,4,6], ['pawn',false,6,6], ['pawn',false,8,6]
             ];
-
             setupData.forEach(d => addPiece(d[0], d[1], d[2], d[3]));
+            
+            if (playerColor === 'black') setTimeout(makeAIMove, 1000);
         }
 
-        btnSandbox.addEventListener('click', setupSandbox);
+        if(btnSandboxRed) btnSandboxRed.addEventListener('click', () => setupSandbox('red'));
+        if(btnSandboxBlack) btnSandboxBlack.addEventListener('click', () => setupSandbox('black'));
 
-        // --- Render Loop ---
-        const clock = new THREE.Clock();
+        if(btnSandboxMain) btnSandboxMain.addEventListener('click', () => {
+            btnSandboxMain.classList.add('hidden');
+            btnSandboxMain.classList.remove('glow-btn');
+            colorSelector.classList.remove('hidden');
+            
+            if(dialogTitle) dialogTitle.innerHTML = "⚔️ 選擇陣營";
+            if(dialogText) dialogText.innerHTML = "請選擇你要當「紅方(先走)」還是「黑方(後走)」？";
+            if(tutorialSelector) tutorialSelector.classList.add('hidden');
+            if(btnNext) btnNext.classList.add('hidden');
+            if(btnPrev) btnPrev.classList.add('hidden');
+            
+            clearBoard();
+            camera.position.set(0, 75, 80);
+            controls.target.set(0, 0, -10);
+            controls.update();
+        });
+
         function animateLoop() {
             requestAnimationFrame(animateLoop);
-            
             if (typeof controls !== 'undefined') controls.update(); 
-
             const time = performance.now();
             for (let i = animations.length - 1; i >= 0; i--) {
                 const anim = animations[i];
                 let progress = (time - anim.startTime) / anim.duration;
-                
                 if (progress >= 1) {
                     anim.mesh.position.copy(anim.end);
                     if (anim.onComplete) anim.onComplete();
@@ -927,11 +760,9 @@
                     anim.mesh.position.y = anim.start.y + Math.sin(progress * Math.PI) * 5;
                 }
             }
-
             renderer.render(scene, camera);
         }
 
-        // 改用 ResizeObserver 來監聽容器尺寸變化，完美支援 Flexbox 分割畫面
         const resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
                 const { width, height } = entry.contentRect;
@@ -945,9 +776,13 @@
         resizeObserver.observe(container);
 
         window.onload = function() {
-            camera.position.set(0, 90, 60);
-            controls.target.set(0, 0, 0);
-            loadTutorialStep(0);
+            try {
+                camera.position.set(0, 90, 60);
+                controls.target.set(0, 0, 0);
+                loadTutorialStep(0);
+            } catch(e) {
+                console.error("UI Initialization failed, but starting 3D render loop safely.", e);
+            }
             animateLoop();
         };
 
