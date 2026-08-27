@@ -9,28 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Noto Sans TC', sans-serif; touch-action: none; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .interactive { pointer-events: auto; }
+        /* 移除原本的 body overflow 與 Absolute UI 定位，改用 Flexbox 撐滿畫面 */
+        body { margin: 0; background-color: #87CEEB; font-family: 'Noto Sans TC', sans-serif; touch-action: none; overflow: hidden; }
         
         /* 對話框動畫 */
         @keyframes float {
             0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-5px); }
             100% { transform: translateY(0px); }
         }
         .dialog-box { animation: float 3s ease-in-out infinite; }
@@ -42,57 +27,67 @@
             100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
         }
         .glow-btn { animation: pulse-glow 2s infinite; }
+        
+        /* 自訂卷軸，讓右側面板內容太多時可以優雅滑動 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body>
-    <div id="canvas-container"></div>
+<body class="flex flex-col md:flex-row h-screen w-screen">
     
-    <div id="ui-layer">
-        <!-- 上方標題與提示區 -->
-        <div class="w-full flex justify-between items-start">
+    <!-- 左側/上方：3D 遊戲畫布區 -->
+    <div id="game-area" class="relative flex-grow h-[55%] md:h-full w-full md:w-auto">
+        <div id="canvas-container" class="absolute inset-0 w-full h-full"></div>
+        
+        <!-- 浮動在畫布上的標題與警告提示 -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none z-10">
             <h1 class="text-3xl md:text-5xl font-black text-white drop-shadow-md stroke-black stroke-2" style="-webkit-text-stroke: 2px #c2410c;">
                 象棋小學堂
             </h1>
-            <div id="hint-box" class="hidden interactive bg-yellow-400 text-yellow-900 px-4 py-2 rounded-xl font-bold border-4 border-yellow-500 shadow-lg text-sm md:text-lg">
+            <div id="hint-box" class="hidden pointer-events-auto bg-yellow-400 text-yellow-900 px-4 py-2 rounded-xl font-bold border-4 border-yellow-500 shadow-lg text-sm md:text-lg">
                 提示文字
             </div>
         </div>
+    </div>
 
-        <!-- 下方對話框與控制區 -->
-        <div class="w-full max-w-2xl mx-auto interactive flex flex-col gap-4 mb-4 md:mb-8">
-            <div class="dialog-box bg-white/95 backdrop-blur rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 border-emerald-400 relative">
-                <!-- 指導員頭像 (使用Emoji代替) -->
-                <div class="absolute -top-10 -left-6 md:-left-12 text-6xl md:text-7xl drop-shadow-lg transform -rotate-12">
-                    🦉
-                </div>
-                
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2 ml-12 md:ml-16">
-                    <h2 id="dialog-title" class="text-xl md:text-2xl font-black text-emerald-600">
-                        載入中...
-                    </h2>
-                    <!-- 課程選單 -->
-                    <select id="tutorial-selector" class="bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-1.5 font-bold shadow-sm cursor-pointer outline-none">
-                    </select>
-                </div>
-
-                <p id="dialog-text" class="text-gray-700 font-bold text-base md:text-xl leading-relaxed ml-12 md:ml-16 min-h-[4rem]">
-                    請稍候，準備為您佈置棋盤...
-                </p>
-                
-                <div class="flex justify-end gap-3 mt-4">
-                    <button id="btn-prev" class="hidden px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors">
-                        上一課
-                    </button>
-                    <button id="btn-next" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-transform active:scale-95 shadow-md flex items-center gap-2 glow-btn">
-                        開始上課 <span>👉</span>
-                    </button>
-                </div>
+    <!-- 右側/下方：UI 控制面板 (分割畫面，不再重疊於 Canvas 上) -->
+    <div id="ui-panel" class="w-full h-[45%] md:h-full md:w-[350px] lg:w-[420px] shrink-0 bg-white/95 backdrop-blur shadow-[-10px_0_20px_rgba(0,0,0,0.1)] flex flex-col p-4 md:p-6 z-20 md:rounded-l-3xl border-t-4 md:border-t-0 md:border-l-4 border-emerald-400 overflow-y-auto">
+        
+        <div class="dialog-box flex-grow flex flex-col relative mt-2 md:mt-8">
+            <!-- 指導員頭像 -->
+            <div class="absolute -top-8 -left-2 text-5xl md:text-6xl drop-shadow-md transform -rotate-12 z-10">
+                🦉
             </div>
             
-            <button id="btn-sandbox" class="w-full py-3 mt-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg transition-all shadow-[0_6px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[6px]">
-                ⚔️ 與電腦對戰練習
-            </button>
+            <div class="flex flex-col gap-2 mb-4 ml-14 md:ml-16">
+                <h2 id="dialog-title" class="text-xl md:text-2xl font-black text-emerald-600">
+                    載入中...
+                </h2>
+                <!-- 課程選單 -->
+                <select id="tutorial-selector" class="bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-sm md:text-base rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-1.5 font-bold shadow-sm cursor-pointer outline-none w-full">
+                </select>
+            </div>
+
+            <div class="bg-emerald-50/50 rounded-2xl p-4 flex-grow border border-emerald-100 shadow-inner mb-4">
+                <p id="dialog-text" class="text-gray-700 font-bold text-base md:text-lg leading-relaxed">
+                    請稍候，準備為您佈置棋盤...
+                </p>
+            </div>
+            
+            <div class="flex justify-end gap-2 mb-4 mt-auto">
+                <button id="btn-prev" class="hidden px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors text-sm md:text-base">
+                    上一課
+                </button>
+                <button id="btn-next" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-transform active:scale-95 shadow-md flex items-center gap-2 glow-btn text-sm md:text-base whitespace-nowrap">
+                    開始上課 <span>👉</span>
+                </button>
+            </div>
         </div>
+        
+        <button id="btn-sandbox" class="w-full py-3 mt-2 md:mt-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-base md:text-lg transition-all shadow-[0_5px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[5px] shrink-0">
+            ⚔️ 與電腦對戰練習
+        </button>
     </div>
 
     <script>
@@ -147,19 +142,19 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color('#87CEEB'); // Sky blue
         
-        // 加入雲朵 (修改為往遠方、下方退，避免擋住視線)
+        // 加入雲朵
         for(let i=0; i<10; i++) {
             const cloudGeo = new THREE.SphereGeometry(Math.random()*15+5, 16, 16);
             const cloudMat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
             const cloud = new THREE.Mesh(cloudGeo, cloudMat);
-            // Z軸設定在 -150 到 -250 之間，確保在棋盤後方很遠的地方
             cloud.position.set((Math.random()-0.5)*400, -20 + Math.random()*60, -150 - Math.random()*100);
             scene.add(cloud);
         }
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // 使用容器的寬高來初始化相機與渲染器，而不是 window
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
@@ -171,7 +166,7 @@
         controls.maxPolarAngle = Math.PI / 2 - 0.1; 
         controls.minDistance = 30;
         controls.maxDistance = 150;
-        controls.target.set(0, 0, -10); 
+        controls.target.set(0, 0, 0); // 視角中心調整回正中央
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -936,15 +931,22 @@
             renderer.render(scene, camera);
         }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // 改用 ResizeObserver 來監聽容器尺寸變化，完美支援 Flexbox 分割畫面
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const { width, height } = entry.contentRect;
+                if (width > 0 && height > 0) {
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                }
+            }
         });
+        resizeObserver.observe(container);
 
         window.onload = function() {
-            camera.position.set(0, 90, 40);
-            controls.target.set(0, 0, -10);
+            camera.position.set(0, 90, 60);
+            controls.target.set(0, 0, 0);
             loadTutorialStep(0);
             animateLoop();
         };
