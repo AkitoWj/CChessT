@@ -6,6 +6,7 @@
     <title>3D 象棋小學堂</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Noto Sans TC', sans-serif; touch-action: none; }
@@ -155,6 +156,15 @@
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
+
+        // 初始化視角控制器 (OrbitControls)
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.1; // 防止視角進入地下
+        controls.minDistance = 30;
+        controls.maxDistance = 150;
+        controls.target.set(0, 0, -10); // 預設將中心點往上移，避免下方棋子被介面擋住
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -375,7 +385,7 @@
                     // 塞象眼檢查
                     const eyeX = piece.gridX + dx/2;
                     const eyeY = piece.gridY + dy/2;
-                    if (boardState[eyeY][eyeX] !== null) return { valid: false, msg: "哎呀！田字中間有棋子擋住（塞象眼），飛不過去！" };
+                    if (boardState[eyeY][eyeX] !== null) return { valid: false, msg: "哎呀！田字中間有棋子擋住（塞象眼），飛不過去！", blockX: eyeX, blockY: eyeY };
                     return { valid: true };
                 case 'horse':
                     if (!((absDx === 1 && absDy === 2) || (absDx === 2 && absDy === 1))) {
@@ -384,7 +394,7 @@
                     // 拐馬腳檢查
                     const blockX = absDx === 2 ? piece.gridX + dx/2 : piece.gridX;
                     const blockY = absDy === 2 ? piece.gridY + dy/2 : piece.gridY;
-                    if (boardState[blockY][blockX] !== null) return { valid: false, msg: "馬腳被擋住了（拐馬腳），跳不過去！" };
+                    if (boardState[blockY][blockX] !== null) return { valid: false, msg: "馬腳被擋住了（拐馬腳），跳不過去！", blockX: blockX, blockY: blockY };
                     return { valid: true };
                 case 'chariot':
                     if (absDx !== 0 && absDy !== 0) return { valid: false, msg: "車只能直直走或橫橫走喔！" };
@@ -455,6 +465,8 @@
             selMesh.position.set(pos.x, 0.2, pos.z);
             indicatorsGroup.add(selMesh);
 
+            const generatedBlocks = new Set(); // 記錄已產生的 X 標記
+
             // Find all valid moves
             for (let y = 0; y < 10; y++) {
                 for (let x = 0; x < 9; x++) {
@@ -477,6 +489,35 @@
                         iMesh.position.set(tPos.x, 0.3, tPos.z);
                         iMesh.userData = { isIndicator: true, gridX: x, gridY: y };
                         indicatorsGroup.add(iMesh);
+
+                        // 增強吃子標示：在目標棋子上空加一個紅色鎖定環
+                        if (targetPiece) {
+                            const ringGeo = new THREE.RingGeometry(pieceRadius - 0.5, pieceRadius + 0.5, 32);
+                            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+                            const targetRing = new THREE.Mesh(ringGeo, ringMat);
+                            targetRing.rotation.x = -Math.PI / 2;
+                            targetRing.position.set(tPos.x, pieceHeight + 0.5, tPos.z);
+                            indicatorsGroup.add(targetRing);
+                        }
+                    } else if (rule.blockX !== undefined && rule.blockY !== undefined) {
+                        // 顯示被擋住的紅色 X
+                        const blockKey = `${rule.blockX},${rule.blockY}`;
+                        if (!generatedBlocks.has(blockKey)) {
+                            generatedBlocks.add(blockKey);
+                            const bPos = gridToWorld(rule.blockX, rule.blockY);
+                            
+                            const xGroup = new THREE.Group();
+                            const xMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                            const xGeo = new THREE.BoxGeometry(3, 0.5, 0.8);
+                            const m1 = new THREE.Mesh(xGeo, xMat);
+                            m1.rotation.y = Math.PI / 4;
+                            const m2 = new THREE.Mesh(xGeo, xMat);
+                            m2.rotation.y = -Math.PI / 4;
+                            xGroup.add(m1);
+                            xGroup.add(m2);
+                            xGroup.position.set(bPos.x, pieceHeight + 1.5, bPos.z);
+                            indicatorsGroup.add(xGroup);
+                        }
                     }
                 }
             }
@@ -711,8 +752,8 @@
         const tutorialSteps = [
             {
                 title: "1. 認識棋盤",
-                text: "嗨！歡迎來到象棋小學堂！象棋有「紅軍」和「黑軍」。<br><br>我們今天來當紅軍司令吧！看到中間的「楚河漢界」了嗎？那是兩軍的邊界喔！",
-                setup: () => { clearBoard(); camera.position.set(0, 75, 80); camera.lookAt(0,0,0); },
+                text: "嗨！歡迎來到象棋小學堂！象棋有「紅軍」和「黑軍」。<br><br>我們今天來當紅軍司令吧！看到中間的「楚河漢界」了嗎？那是兩軍的邊界喔！<br>💡 <b>提示：你可以用手指或滑鼠旋轉、縮放棋盤喔！</b>",
+                setup: () => { clearBoard(); camera.position.set(0, 75, 80); controls.target.set(0,0,-10); },
                 autoAdvance: false
             },
             {
@@ -839,7 +880,7 @@
             btnSandbox.classList.remove('glow-btn');
             
             camera.position.set(0, 75, 80);
-            camera.lookAt(0,0,0);
+            controls.target.set(0,0,-10);
 
             // Standard Setup
             const setupData = [
@@ -863,6 +904,8 @@
         function animateLoop() {
             requestAnimationFrame(animateLoop);
             
+            if (typeof controls !== 'undefined') controls.update(); // 更新視角控制器
+
             // Handle animations (Piece movement)
             const time = performance.now();
             for (let i = animations.length - 1; i >= 0; i--) {
@@ -895,7 +938,7 @@
         window.onload = function() {
             // Setup init camera
             camera.position.set(0, 90, 40);
-            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, -10);
             
             // Start tutorial
             loadTutorialStep(0);
