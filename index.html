@@ -656,7 +656,10 @@
             
             step.setup();
             
-            if (btnPrev) btnPrev.classList.toggle('hidden', index === 0);
+            if (btnPrev) {
+                btnPrev.innerHTML = "上一課";
+                btnPrev.classList.toggle('hidden', index === 0);
+            }
             if (index === tutorialSteps.length - 1) {
                 if(btnNext) btnNext.classList.add('hidden');
             } else if (step.autoAdvance === false) {
@@ -686,7 +689,14 @@
             if (isPlayWithAI) setupSandbox(playerColor);
             else loadTutorialStep(currentTutorialStep + 1);
         });
-        if(btnPrev) btnPrev.addEventListener('click', () => loadTutorialStep(currentTutorialStep - 1));
+        if(btnPrev) btnPrev.addEventListener('click', () => {
+            if (!isTutorialMode) {
+                // 如果在對戰/選擇陣營模式，按鈕功能變為「回到教學」
+                loadTutorialStep(currentTutorialStep);
+            } else {
+                loadTutorialStep(currentTutorialStep - 1);
+            }
+        });
 
         function setupSandbox(color) {
             clearBoard();
@@ -701,7 +711,10 @@
             if(colorSelector) colorSelector.classList.remove('hidden');
             if(btnSandboxRed) btnSandboxRed.classList.remove('glow-btn');
             if(btnSandboxBlack) btnSandboxBlack.classList.remove('glow-btn');
-            if(btnPrev) btnPrev.classList.add('hidden');
+            if(btnPrev) {
+                btnPrev.innerHTML = "🔙 回到教學";
+                btnPrev.classList.remove('hidden');
+            }
             
             if (playerColor === 'red') {
                 camera.position.set(0, 75, 80); controls.target.set(0, 0, -10);
@@ -735,7 +748,11 @@
             if(dialogText) dialogText.innerHTML = "請選擇你要當「紅方(先走)」還是「黑方(後走)」？";
             if(tutorialSelector) tutorialSelector.classList.add('hidden');
             if(btnNext) btnNext.classList.add('hidden');
-            if(btnPrev) btnPrev.classList.add('hidden');
+            isTutorialMode = false;
+            if(btnPrev) {
+                btnPrev.innerHTML = "🔙 回到教學";
+                btnPrev.classList.remove('hidden');
+            }
             
             clearBoard();
             camera.position.set(0, 75, 80);
